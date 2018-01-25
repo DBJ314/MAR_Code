@@ -363,9 +363,7 @@ MoveGlobal:
     CMP Y,[BP+2]
     JZ MoveGlobalSuccess
 MoveGlobalNotDone:
-    MOV A,X
-    SUB A,[BP+3]
-    CMP A,0
+    CMP X,[BP+3]
     JC MGEast
     JA MGWest
 MoveGlobalSecondTry:
