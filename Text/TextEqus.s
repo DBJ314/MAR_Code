@@ -1,0 +1,1 @@
+TextMaxLength EQU 8
