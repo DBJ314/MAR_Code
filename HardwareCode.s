@@ -40,6 +40,10 @@ LaserDeposit:
     MOV A,2
     HWI 0x0002
     RET
+LaserAttack:
+    MOV A,3
+    HWI 0x0002
+    RET
 InventoryClear:
     MOV A,0
     HWI 0x0006
@@ -54,4 +58,16 @@ GetRandom:
 GetGlobalCoords:
     MOV A,4
     HWI 0x0003
+    RET
+ShieldCharge:
+    MOV A,1
+    HWI 0x000F
+    RET
+ShieldPoll:
+    MOV A,2
+    HWI 0x000F
+    RET
+SendMessage:
+    MOV A,2
+    HWI 0x000D
     RET

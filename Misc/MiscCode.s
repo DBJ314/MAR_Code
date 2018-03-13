@@ -82,10 +82,29 @@ NotAbort:
     PUSH CMDDone
     JMP CreateTask
 NotTravel:
+    CMP B,0x20
+    JNZ NotAttack
+    PUSH CMDDone
+    JMP LaserAttack
+NotAttack:
+    CMP B,0x5A
+    JNZ NotShield
+    MOV B,25
+    PUSH CMDDone
+    JMP ShieldCharge
+NotShield:
+    CMP B,0x4D
+    JNZ NotSendMessage
+    CALL GetString
+    MOV X,TextBuffer
+    PUSH CMDDone
+    JMP SendMessage
+NotSendMessage:
 CMDDone:
     CALL ClearKeyBuf
     JMP RLoopback
 TestLP:
+    PUSH 0xFF
     CALL RBegin
     MOV X,TestMsg
     CALL DisplayString

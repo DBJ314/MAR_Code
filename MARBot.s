@@ -497,10 +497,29 @@ NotAbort:
     PUSH CMDDone
     JMP CreateTask
 NotTravel:
+    CMP B,0x20
+    JNZ NotAttack
+    PUSH CMDDone
+    JMP LaserAttack
+NotAttack:
+    CMP B,0x5A
+    JNZ NotShield
+    MOV B,25
+    PUSH CMDDone
+    JMP ShieldCharge
+NotShield:
+    CMP B,0x4D
+    JNZ NotSendMessage
+    CALL GetString
+    MOV X,TextBuffer
+    PUSH CMDDone
+    JMP SendMessage
+NotSendMessage:
 CMDDone:
     CALL ClearKeyBuf
     JMP RLoopback
 TestLP:
+    PUSH 0xFF
     CALL RBegin
     MOV X,TestMsg
     CALL DisplayString
@@ -651,6 +670,10 @@ LaserDeposit:
     MOV A,2
     HWI 0x0002
     RET
+LaserAttack:
+    MOV A,3
+    HWI 0x0002
+    RET
 InventoryClear:
     MOV A,0
     HWI 0x0006
@@ -665,6 +688,18 @@ GetRandom:
 GetGlobalCoords:
     MOV A,4
     HWI 0x0003
+    RET
+ShieldCharge:
+    MOV A,1
+    HWI 0x000F
+    RET
+ShieldPoll:
+    MOV A,2
+    HWI 0x000F
+    RET
+SendMessage:
+    MOV A,2
+    HWI 0x000D
     RET
 ;function FindPath
 ;finds the path to something
