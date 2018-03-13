@@ -4,7 +4,7 @@ TaskStackStart EQU 0x1FF ;start of stack
 ;offsets into task structures
 TSNextTask EQU 0
 TSPrevTask EQU 1
-TSPC EQU 2
+TSIP EQU 2
 TSSP EQU 3
 TSBP EQU 4
 TSRA EQU 5

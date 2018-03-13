@@ -1,10 +1,10 @@
     ADD [TickCount],1
     MOV [RemainingCycleCount],MaxContextSwitches
     MOV [HeldLocks],0
-    MOV [TempPC],_RestartAtTop
+    MOV [TempIP],Schedule
     JMP _ReadyTasks
-_RestartAtTop:
-    MOV [CurTask],[FirstTask]
+_RestartAtTopOfQueue:
+    MOV [CurTask],[FirstTask];starts at first task in queue instead of IO Task
 Schedule:
     MOV A,[CurTask]
     CMP A,0
@@ -17,7 +17,7 @@ Schedule:
     JNZ _SkipThisTask
     SUB [RemainingCycleCount],1
     JZ Break
-    MOV [TempPC],[A+TSPC]
+    MOV [TempIP],[A+TSIP]
     MOV SP,[A+TSSP]
     MOV BP,[A+TSBP]
     ADD [A+TSCycleCounter],1
@@ -28,7 +28,7 @@ Schedule:
     MOV X,[A+TSRX]
     MOV Y,[A+TSRY]
     MOV A,[TempA]
-    JMP [TempPC]
+    JMP [TempIP]
 
 ;TaskPtr CreateTask(numArgs, entryPoint)
 ;Creates a new task with the specified entry point and inserts it at the top of the task queue.
@@ -43,7 +43,7 @@ Schedule:
 ;CALL CreateTask ;call the function
 CreateTask:
     CALL _BeginSpecial
-    POP [TempPC]
+    POP [TempIP]
     MOV [TempA],A
     MOV [TempB],B
     MOV [TempC],C
@@ -55,7 +55,7 @@ CreateTask:
     MOV [A+TSRD],D
     MOV [A+TSRX],X
     MOV [A+TSRY],Y
-    POP [A+TSPC]
+    POP [A+TSIP]
     MOV [A+TSLocks],0
     MOV [A+TSFlags],0
     MOV [A+TSCycleCounter],0
@@ -83,9 +83,9 @@ CreateTaskStackCopyLoop:
 CreateTaskStackCopyLoopDone:
     MOV B,[TempB]
     MOV C,[TempC]
-    PUSH [TempPC]
+    PUSH [TempIP]
     CALL _SpecialDelayTask
-    JMP _RestartAtTop
+    JMP _RestartAtTopOfQueue
 
 ;void DestroyTask(TaskPtr)
 ;removes a task from the queue and deallocates its structure
@@ -177,16 +177,16 @@ SteamrollDone:
 ;There is also a cycle counter that keeps track of how many times the code section has restarted.
 RBegin:
     CALL _BeginSpecial
-    POP [TempPC]
+    POP [TempIP]
     POP [TempC]
     MOV [TempA],A
     MOV A,[CurTask]
-    PUSH [A+TSPC]
+    PUSH [A+TSIP]
     PUSH [A+TSSP]
     PUSH [A+TSBP]
     PUSH [A+TSCycleCounter]
     PUSH [A+TSLocks]
-    MOV [A+TSPC],[TempPC]
+    MOV [A+TSIP],[TempIP]
     MOV [A+TSSP],SP
     MOV [A+TSBP],BP
     MOV [A+TSCycleCounter],0
@@ -197,24 +197,24 @@ RBegin:
 
 ;void REnd()
 ;used to end a recursive code section. It loads the previous state from the stack. 
-;It returns normally, but the next time this task is run it will start with the old PC,SP,BP, and Locks.
+;It returns normally, but the next time this task is run it will start with the old IP,SP,BP, and Locks.
 ;The old cycle counter is also reloaded.
 ;SP has to be at the same position it was in when the matching RBegin returned.
 REnd:
     CALL _BeginSpecial
-    POP [TempPC]
+    POP [TempIP]
     MOV [TempA],A
     MOV A,[CurTask]
     POP [A+TSLocks]
     POP [A+TSCycleCounter]
     POP [A+TSBP]
     POP [A+TSSP]
-    POP [A+TSPC]
+    POP [A+TSIP]
     MOV A,[TempA]
-    JMP [TempPC]
+    JMP [TempIP]
 
 ;void RCheckpoint()
-;This function sets the recursive code state (PC,SP,BP, but not Locks or Cycles) without saving the previous state.
+;This function sets the recursive code state (IP,SP,BP, but not Locks or Cycles) without saving the previous state.
 ;It then gives up control of the CPU so that the next task is run.
 ;Usage:
 ;PUSH Locks
@@ -226,17 +226,17 @@ REnd:
 ;RET
 RCheckpoint:
     CALL _BeginSpecial
-    POP [TempPC]
+    POP [TempIP]
     MOV [TempA], A
     MOV A,[CurTask]
-    MOV [A+TSPC],[TempPC]
+    MOV [A+TSIP],[TempIP]
     MOV [A+TSSP],SP
     MOV [A+TSBP],BP
     MOV A,[TempA]
     JMP RLoopback
 
 ;void RLoopback()
-;abandons the PC,SP,and BP and runs the next task.
+;abandons the IP,SP,and BP and runs the next task.
 ;execution of this task continues at the recursion point next tick, with SP and BP reloaded.
 ;All other registers are unaffected.
 RLoopback:
@@ -279,24 +279,24 @@ _BeginSpecial:
 _SpecialDelayTask:
     CALL SaveRegisters
     MOV A,[CurTask]
-    POP [TempPC]
-    PUSH [A+TSPC]
+    POP [TempIP]
+    PUSH [A+TSIP]
     PUSH [A+TSSP]
     PUSH [A+TSBP]
-    MOV [A+TSPC],__DelayEnd
+    MOV [A+TSIP],__DelayEnd
     MOV [A+TSSP],SP
     MOV [A+TSBP],BP
-    JMP [TempPC]
+    JMP [TempIP]
 __DelayEnd:
     MOV [TempA],A
     MOV A,[CurTask]
     POP [A+TSBP]
     POP [A+TSSP]
-    POP [A+TSPC]
+    POP [A+TSIP]
     MOV A,[TempA]
     RET
 SaveRegisters:
-    POP [TempPC]
+    POP [TempIP]
 _SaveRegisters:
     MOV [TempA],A
     MOV A,[CurTask]
@@ -306,23 +306,24 @@ _SaveRegisters:
     MOV [A+TSRD],D
     MOV [A+TSRX],X
     MOV [A+TSRY],Y
-    JMP [TempPC]
+    JMP [TempIP]
 
-_ReadyTasks:;JMP with return in [TempPC]
+_ReadyTasks:;JMP with return in [TempIP]
     MOV A,[FirstTask]
 __ReadyTaskLoop:
     AND [A+TSFlags],0xFFFE;mask out FlagDone
     MOV A,[A+TSNextTask]
     CMP A,0
     JNZ __ReadyTaskLoop
-    JMP [TempPC]
+    MOV [CurTask],FirstTask
+    JMP [TempIP]
 ;used when you want to break if a condition is true.
 ;JZ Break
 Break:
     BRK
 Panic:
     MOV A,[FirstTask]
-    MOV [A+TSPC],PanicLoop
+    MOV [A+TSIP],PanicLoop
     MOV [A+TSFlags],0
 PanicLoop:
     MOV B,0xDEAD
