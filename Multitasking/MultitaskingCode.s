@@ -309,7 +309,7 @@ _SaveRegisters:
     JMP [TempIP]
 
 _ReadyTasks:;JMP with return in [TempIP]
-    MOV A,[FirstTask]
+    MOV A,FirstTask
 __ReadyTaskLoop:
     AND [A+TSFlags],0xFFFE;mask out FlagDone
     MOV A,[A+TSNextTask]
